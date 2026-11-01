@@ -5,4 +5,5 @@ https://github.com/SnlperStripes/claude-account-switcher
 This product includes software developed by SnlperStripes.
 
 Modified in the fork at https://github.com/HiccupHater/claude-account-switcher:
-the self-updater checks this fork's releases instead of upstream's (update.go).
+the self-updater checks this fork's releases instead of upstream's (update.go),
+and accounts can be renamed from the tray menu (rename_*.go, switcher.go, tray.go).

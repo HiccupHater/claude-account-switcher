@@ -8,9 +8,11 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 )
 
 // Account is a Claude account the switcher has seen signed in.
@@ -22,17 +24,47 @@ type Account struct {
 	Plan    string `json:"plan"`
 	Usage   *Usage `json:"usage,omitempty"`
 	Problem string `json:"problem,omitempty"`
+	// Fork: a name the user gave the account in the switcher. It wins over
+	// Claude's display name and is never sent anywhere.
+	Nickname string `json:"nickname,omitempty"`
 }
 
 func (a *Account) label() string {
-	name := a.Name
-	if name == "" {
-		name = a.Email
+	name := a.claudeName()
+	if a.Nickname != "" {
+		name = a.Nickname
 	}
 	if a.Plan != "" {
 		name += " (" + a.Plan + ")"
 	}
 	return name
+}
+
+// claudeName is the account's name as Claude knows it.
+func (a *Account) claudeName() string {
+	if a.Name != "" {
+		return a.Name
+	}
+	return a.Email
+}
+
+const maxNickname = 40
+
+// cleanNickname trims a typed name and drops characters that would break a
+// menu line, such as tabs and line breaks.
+func cleanNickname(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.IsControl(r) {
+			r = ' '
+		}
+		b.WriteRune(r)
+	}
+	r := []rune(strings.Join(strings.Fields(b.String()), " "))
+	if len(r) > maxNickname {
+		r = r[:maxNickname]
+	}
+	return string(r)
 }
 
 // State is what the switcher remembers between runs.
@@ -533,6 +565,18 @@ func (s *switcher) importProjects(a *Account) {
 		return
 	}
 	log.Printf("%d projects imported into %s", n, a.label())
+}
+
+// setNickname names an account in the switcher's menu. An empty name goes
+// back to the name from Claude.
+func (s *switcher) setNickname(uuid, name string) {
+	s.mu.Lock()
+	if a := s.account(uuid); a != nil {
+		a.Nickname = cleanNickname(name)
+		s.saveState()
+	}
+	s.mu.Unlock()
+	s.onChange()
 }
 
 func (s *switcher) setAuto(on bool) {

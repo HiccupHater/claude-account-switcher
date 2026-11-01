@@ -24,6 +24,8 @@ type tray struct {
 	spend      *systray.MenuItem
 	thresholds []*systray.MenuItem
 	add        *systray.MenuItem
+	rename     *systray.MenuItem
+	renames    [maxAccounts]*systray.MenuItem
 	importNow  *systray.MenuItem
 	autostart  *systray.MenuItem
 	lastIcon   string
@@ -51,6 +53,11 @@ func (t *tray) onReady() {
 	}
 	t.spend = systray.AddMenuItemCheckbox("Auto-switch to use up expiring weekly", "Switch to an account whose weekly limit resets within a day with half or more of it unused", false)
 	t.add = systray.AddMenuItem("Add account…", "Restart Claude on its sign-in screen, your current account is kept")
+	t.rename = systray.AddMenuItem("Rename account", "Give an account your own name in this menu")
+	for i := range t.renames {
+		t.renames[i] = t.rename.AddSubMenuItem("", "")
+		t.renames[i].Hide()
+	}
 	t.importNow = systray.AddMenuItem("Import chats from all accounts", "Restart Claude so every chat shows up in this account")
 	systray.AddSeparator()
 	// Rewriting an enabled entry keeps its path current and adds the Task
@@ -72,6 +79,25 @@ func (t *tray) onReady() {
 					go t.s.run("Switch", func() error { return t.s.switchTo(snap.Accounts[i].UUID, byHand) })
 				}
 				t.s.onChange()
+			}
+		}()
+	}
+	for i, item := range t.renames {
+		go func() {
+			for range item.ClickedCh {
+				snap := t.s.snapshot()
+				if i >= len(snap.Accounts) {
+					continue
+				}
+				a := snap.Accounts[i]
+				current := a.Nickname
+				if current == "" {
+					current = a.claudeName()
+				}
+				prompt := "Name for " + a.Email + " in this menu. Leave it empty to use the name from Claude."
+				if name, ok := askName("Rename account", prompt, current); ok {
+					t.s.setNickname(a.UUID, name)
+				}
 			}
 		}()
 	}
@@ -200,6 +226,19 @@ func (t *tray) render() {
 				activePct = a.Usage.current(now).Session
 			}
 		}
+	}
+	for i, item := range t.renames {
+		if i >= len(snap.Accounts) {
+			item.Hide()
+			continue
+		}
+		item.SetTitle(snap.Accounts[i].label() + "…")
+		item.Show()
+	}
+	if len(snap.Accounts) == 0 {
+		t.rename.Hide()
+	} else {
+		t.rename.Show()
 	}
 	systray.SetTooltip(tip)
 	t.setIcon(activePct, snap.Threshold)

@@ -41,3 +41,5 @@ func nativeResume(titles []string, _ time.Duration) []bool {
 }
 
 func showWebDialog(string, int) ([]bool, error) { return nil, errUnsupported }
+
+func askName(string, string, string) (string, bool) { return "", false }
