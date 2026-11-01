@@ -19,13 +19,16 @@ import (
 	"time"
 )
 
+// Fork: updates come from this fork's releases, not upstream's, so an
+// upstream release can never replace a build with our own changes in it.
 const (
-	repoURL = "https://github.com/SnlperStripes/claude-account-switcher"
+	repoSlug = "HiccupHater/claude-account-switcher"
+	repoURL  = "https://github.com/" + repoSlug
 	// GitHub is asked for the latest release at most this often.
 	updateEvery = 24 * time.Hour
 )
 
-var latestAPI = "https://api.github.com/repos/SnlperStripes/claude-account-switcher/releases/latest"
+var latestAPI = "https://api.github.com/repos/" + repoSlug + "/releases/latest"
 
 // latestRelease asks GitHub for the version of the latest release, like "0.3.0".
 // Nothing about the user or their accounts goes along.
